@@ -3,6 +3,7 @@
 #include <TimerOne.h>   //
 #include "SystemFont5x7.h"
 #include "Arial14.h"
+#include "Arial_black_16.h"
 
 //Fire up the DMD library as dmd
 #define DISPLAYS_ACROSS 1
@@ -26,11 +27,18 @@ const int GAME_START = 1;
 const int GAME_ON = 2;
 const int GAME_OVER = 3;
 
-int game_state = GAME_START;
+int game_state = GAME_WAITING;
 
 // States of the button
 int UNPRESSED = 1;
 int PRESSED = 2;
+
+typedef struct ScoreBoard {
+  int p1score;
+  int p2score;
+} ScoreBoard;
+
+ScoreBoard scoreboard;
 
 typedef struct Player {
   int pin;
@@ -70,6 +78,9 @@ void setup() {
     players[i].score = 0;
     players[i].lastDebounceTime = 0;  // the last time the output pin was toggled
   }
+
+  scoreboard.p1score = -1;
+  scoreboard.p2score = -1;
   
   players[0].pin = player1pin;
   players[1].pin = player2pin;
@@ -147,7 +158,6 @@ void update_score(Player *player) {
 
   if (player->buttonInputState != currentButtonState) {
     player->lastDebounceTime = millis();
-    
   }
 
   player->buttonInputState = currentButtonState;
@@ -171,14 +181,58 @@ void update_score(Player *player) {
 }
 
 void display_score() {
+  if (scoreboard.p1score != players[0].score) {
+    scoreboard.p1score = players[0].score;
+    redraw_scores();
+  }
+
+  if (scoreboard.p2score != players[1].score) {
+    scoreboard.p2score = players[1].score;
+    redraw_scores();
+  }
+}
+
+void redraw_scores() {
+  dmd.clearScreen( true );
+  dmd.selectFont(Arial_14);
+  
+  char player1score[3];
+  sprintf(player1score, "%d", players[0].score);
+  if (strlen(player1score) == 2) {
+    dmd.drawString(1, 2, player1score, 2,GRAPHICS_NORMAL );
+  } else {
+    dmd.drawString(4, 2, player1score, 2,GRAPHICS_NORMAL );
+  }
+
+  char player2score[3];
+  sprintf(player2score, "%d", players[1].score);
+
+  if (strlen(player2score) == 2) {
+    dmd.drawString(18, 2, player2score, 2, GRAPHICS_NORMAL );    
+  } else {
+    dmd.drawString(21, 2, player2score, 2, GRAPHICS_NORMAL );  
+  }
+  
+  dmd.drawLine(16,  0, 16, 16, GRAPHICS_NORMAL );
+  dmd.drawLine(15,  0, 15, 15, GRAPHICS_NORMAL );
 }
 
 int game_over() {
   // Show winner
+  dmd.clearScreen( true );
+  
+  dmd.selectFont(System5x7);
+  if (players[0].score > players[1].score) {
+    dmd.drawString(11, 1, "P1", 2, GRAPHICS_NORMAL );
+  } else {
+    dmd.drawString(11, 1, "P2", 2, GRAPHICS_NORMAL );
+  }
+  dmd.drawString(5, 9, "WINS", 4, GRAPHICS_NORMAL );
+  
   Serial.println("GAME OVER");
   players[0].score = 0;
   players[1].score = 0;
-  delay(5000);
+  delay(8000);
   return GAME_WAITING;
 }
 
