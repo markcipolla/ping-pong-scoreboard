@@ -1,3 +1,16 @@
+#include <SPI.h>        //SPI.h must be included as DMD is written by SPI (the IDE complains otherwise)
+#include <DMD.h>        //
+#include <TimerOne.h>   //
+#include "SystemFont5x7.h"
+#include "Arial14.h"
+
+//Fire up the DMD library as dmd
+#define DISPLAYS_ACROSS 1
+#define DISPLAYS_DOWN 1
+DMD dmd(DISPLAYS_ACROSS, DISPLAYS_DOWN);
+
+
+
 const int player1pin = 2;     // the number of the pushbutton pin
 const int player2pin = 3;     // the number of the pushbutton pin
 const int ledPin =  13;       // the number of the LED pin
@@ -9,8 +22,9 @@ const int FALSE = 0;
 
 
 const int GAME_WAITING = 0;
-const int GAME_ON = 1;
-const int GAME_OVER = 2;
+const int GAME_START = 1;
+const int GAME_ON = 2;
+const int GAME_OVER = 3;
 
 int game_state = GAME_WAITING;
 
@@ -33,9 +47,17 @@ Player player2;
 // Allocate memory for two Player structs.
 Player players[2];
 
+// Interrupt handler for Timer1 (TimerOne) driven DMD refresh scanning, this gets
+// called at the period set in Timer1.initialize();
+void ScanDMD() { 
+  dmd.scanDisplayBySPI();
+}
+
+
 void setup() {
   Serial.begin(9600);
-  
+
+ 
   // initialize the LED pin as an output:
   pinMode(ledPin, OUTPUT);
   // initialize the pushbutton pin as an input:
@@ -51,25 +73,51 @@ void setup() {
   
   players[0].pin = player1pin;
   players[1].pin = player2pin;
+
+//initialize TimerOne's interrupt/CPU usage used to scan and refresh the display
+   Timer1.initialize( 1000 );           //period in microseconds to call ScanDMD. Anything longer than 5000 (5ms) and you can see flicker.
+   Timer1.attachInterrupt( ScanDMD );   //attach the Timer1 interrupt to ScanDMD which goes to dmd.scanDisplayBySPI()
+
+   //clear/init the DMD pixels held in RAM
+   dmd.clearScreen( true );   //true is normal (all pixels off), false is negative (all pixels on)
 }
-
-
 
 int wait_for_players() {
   // show something on the screen to tell players to both hit their buttons
-  Serial.println("PRESS BOTH BUTTONS TO START");
-  if (digitalRead(player1pin) == HIGH && digitalRead(player2pin) == HIGH) {
-    tell_players_its_on_like_donkey_kong();
-    return GAME_ON;
-  } else {
-    return GAME_WAITING;
+  
+  dmd.selectFont(SystemFont5x7);
+
+  char *message = "Press both buttons to start";
+  
+  dmd.drawMarquee(message,strlen(message),(32*DISPLAYS_ACROSS)-1,5);
+  long start=millis();
+  long timer=start;
+  boolean ret=false;
+  while(!ret){
+    if ((timer+40) < millis()) {
+      ret=dmd.stepMarquee(-1,0);
+      timer=millis();
+    }
+
+    if (digitalRead(player1pin) == HIGH && digitalRead(player2pin) == HIGH) {
+      break;    
+    }
   }
+
+  return GAME_START;
 }
 
-void tell_players_its_on_like_donkey_kong() {
+int tell_players_its_on_like_donkey_kong() {
+  dmd.clearScreen( true );
+  dmd.selectFont(Arial_14);
+  dmd.drawChar(  0,  3, 'G', GRAPHICS_NORMAL );
+  dmd.drawChar(  10,  3, 'a', GRAPHICS_NORMAL );
+  dmd.drawChar( 17,  3, 'm', GRAPHICS_NORMAL );
+  dmd.drawChar( 22,  3, 'e', GRAPHICS_NORMAL );  
   // TELL THE SCREEN IT'S BEGUN
   Serial.println("GAME ON!");
   delay(5000);
+  return GAME_ON;
 }
 
 int there_is_a_winner() {
@@ -128,6 +176,8 @@ void display_score() {
 int game_over() {
   // Show winner
   Serial.println("GAME OVER");
+  players[0].score = 0;
+  players[1].score = 0;
   delay(5000);
   return GAME_WAITING;
 }
@@ -136,6 +186,9 @@ void loop() {
   switch(game_state) {
     case GAME_WAITING :
       game_state = wait_for_players();
+      break;
+    case GAME_START :
+      game_state = tell_players_its_on_like_donkey_kong();
       break;
     case GAME_ON :
       game_state = game_on();
