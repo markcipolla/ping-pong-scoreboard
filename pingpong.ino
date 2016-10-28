@@ -4,6 +4,16 @@ const int ledPin =  13;       // the number of the LED pin
 const int DEBOUNCE_DELAY = 50; // 50ms
 const int NUMBER_OF_PLAYERS = 2;
 
+const int TRUE = 1;
+const int FALSE = 0;
+
+
+const int GAME_WAITING = 0;
+const int GAME_ON = 1;
+const int GAME_OVER = 2;
+
+int game_state = GAME_WAITING;
+
 // States of the button
 int UNPRESSED = 1;
 int PRESSED = 2;
@@ -43,14 +53,47 @@ void setup() {
   players[1].pin = player2pin;
 }
 
-void loop() {
-  for (int i = 0; i < NUMBER_OF_PLAYERS; i++) {
-    updateButtonState(players+i);
-    drawScore(players+i);
+
+
+int wait_for_players() {
+  // show something on the screen to tell players to both hit their buttons
+  Serial.println("PRESS BOTH BUTTONS TO START");
+  if (digitalRead(player1pin) == HIGH && digitalRead(player2pin) == HIGH) {
+    tell_players_its_on_like_donkey_kong();
+    return GAME_ON;
+  } else {
+    return GAME_WAITING;
   }
 }
 
-void updateButtonState(Player *player) {
+void tell_players_its_on_like_donkey_kong() {
+  // TELL THE SCREEN IT'S BEGUN
+  Serial.println("GAME ON!");
+  delay(5000);
+}
+
+int there_is_a_winner() {
+  int p1 = players[0].score;
+  int p2 = players[1].score;
+
+  int score_difference = p1 - p2;
+  return ((p1 >= 21 || p2 >= 21) && (score_difference >= 2 || score_difference <= -2));
+}
+
+int game_on() {
+  update_score(players+0);
+  update_score(players+1);
+  
+  display_score();
+
+  if (there_is_a_winner()) {
+    return GAME_OVER;
+  } else {
+    return GAME_ON;
+  }
+}
+
+void update_score(Player *player) {
   //  Read the button's state
   int currentButtonState = digitalRead(player->pin);
 
@@ -79,6 +122,26 @@ void updateButtonState(Player *player) {
   }
 }
 
-void drawScore(Player *player) {
+void display_score() {
 }
 
+int game_over() {
+  // Show winner
+  Serial.println("GAME OVER");
+  delay(5000);
+  return GAME_WAITING;
+}
+
+void loop() {
+  switch(game_state) {
+    case GAME_WAITING :
+      game_state = wait_for_players();
+      break;
+    case GAME_ON :
+      game_state = game_on();
+      break;
+    case GAME_OVER :
+      game_state = game_over();
+      break;
+  }  
+}
