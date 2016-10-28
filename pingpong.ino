@@ -26,7 +26,7 @@ const int GAME_START = 1;
 const int GAME_ON = 2;
 const int GAME_OVER = 3;
 
-int game_state = GAME_WAITING;
+int game_state = GAME_START;
 
 // States of the button
 int UNPRESSED = 1;
@@ -109,14 +109,14 @@ int wait_for_players() {
 
 int tell_players_its_on_like_donkey_kong() {
   dmd.clearScreen( true );
-  dmd.selectFont(Arial_14);
-  dmd.drawChar(  0,  3, 'G', GRAPHICS_NORMAL );
-  dmd.drawChar(  10,  3, 'a', GRAPHICS_NORMAL );
-  dmd.drawChar( 17,  3, 'm', GRAPHICS_NORMAL );
-  dmd.drawChar( 22,  3, 'e', GRAPHICS_NORMAL );  
-  // TELL THE SCREEN IT'S BEGUN
-  Serial.println("GAME ON!");
-  delay(5000);
+  dmd.selectFont(SystemFont5x7);
+  for (int i = 0; i < 4; i++) {
+    dmd.clearScreen( true );
+    delay(100);
+    dmd.drawString(2, 5, "Start", 5, GRAPHICS_NORMAL );
+    delay(200);
+  }
+  delay(1000);
   return GAME_ON;
 }
 
