@@ -10,8 +10,6 @@
 #define DISPLAYS_DOWN 1
 DMD dmd(DISPLAYS_ACROSS, DISPLAYS_DOWN);
 
-
-
 const int player1pin = 2;     // the number of the pushbutton pin
 const int player2pin = 3;     // the number of the pushbutton pin
 const int ledPin =  13;       // the number of the LED pin
@@ -57,7 +55,7 @@ Player players[2];
 
 // Interrupt handler for Timer1 (TimerOne) driven DMD refresh scanning, this gets
 // called at the period set in Timer1.initialize();
-void ScanDMD() { 
+void ScanDMD() {
   dmd.scanDisplayBySPI();
 }
 
@@ -65,12 +63,15 @@ void ScanDMD() {
 void setup() {
   Serial.begin(9600);
 
- 
+
   // initialize the LED pin as an output:
   pinMode(ledPin, OUTPUT);
   // initialize the pushbutton pin as an input:
   pinMode(player1pin, INPUT);
   pinMode(player2pin, INPUT);
+
+  digitalWrite(player1pin, HIGH);
+  digitalWrite(player2pin, HIGH);
 
   for (int i = 0; i < NUMBER_OF_PLAYERS; i++) {
     players[i].buttonInputState = LOW;
@@ -81,7 +82,7 @@ void setup() {
 
   scoreboard.p1score = -1;
   scoreboard.p2score = -1;
-  
+
   players[0].pin = player1pin;
   players[1].pin = player2pin;
 
@@ -95,23 +96,24 @@ void setup() {
 
 int wait_for_players() {
   // show something on the screen to tell players to both hit their buttons
-  
+
   dmd.selectFont(SystemFont5x7);
 
   char *message = "Press both buttons to start";
-  
+
   dmd.drawMarquee(message,strlen(message),(32*DISPLAYS_ACROSS)-1,5);
   long start=millis();
   long timer=start;
   boolean ret=false;
-  while(!ret){
+  while(true){
     if ((timer+40) < millis()) {
-      ret=dmd.stepMarquee(-1,0);
-      timer=millis();
+
+      ret = dmd.stepMarquee(-1,0);
+      timer = millis();
     }
 
     if (digitalRead(player1pin) == HIGH && digitalRead(player2pin) == HIGH) {
-      break;    
+      break;
     }
   }
 
@@ -142,7 +144,7 @@ int there_is_a_winner() {
 int game_on() {
   update_score(players+0);
   update_score(players+1);
-  
+
   display_score();
 
   if (there_is_a_winner()) {
@@ -161,7 +163,7 @@ void update_score(Player *player) {
   }
 
   player->buttonInputState = currentButtonState;
-  
+
   if ((millis() - player->lastDebounceTime) > DEBOUNCE_DELAY) {
     if (player->buttonInputState == HIGH) {
       if (player->buttonState == UNPRESSED) {
@@ -170,9 +172,9 @@ void update_score(Player *player) {
         Serial.println(player->score);
       }
     }
-  
+
     if (player->buttonInputState == LOW) {
-  
+
       if (player->buttonState == PRESSED) {
         player->buttonState = UNPRESSED;
       }
@@ -195,7 +197,7 @@ void display_score() {
 void redraw_scores() {
   dmd.clearScreen( true );
   dmd.selectFont(Arial_14);
-  
+
   char player1score[3];
   sprintf(player1score, "%d", players[0].score);
   if (strlen(player1score) == 2) {
@@ -208,11 +210,11 @@ void redraw_scores() {
   sprintf(player2score, "%d", players[1].score);
 
   if (strlen(player2score) == 2) {
-    dmd.drawString(18, 2, player2score, 2, GRAPHICS_NORMAL );    
+    dmd.drawString(18, 2, player2score, 2, GRAPHICS_NORMAL );
   } else {
-    dmd.drawString(21, 2, player2score, 2, GRAPHICS_NORMAL );  
+    dmd.drawString(21, 2, player2score, 2, GRAPHICS_NORMAL );
   }
-  
+
   dmd.drawLine(16,  0, 16, 16, GRAPHICS_NORMAL );
   dmd.drawLine(15,  0, 15, 15, GRAPHICS_NORMAL );
 }
@@ -220,7 +222,7 @@ void redraw_scores() {
 int game_over() {
   // Show winner
   dmd.clearScreen( true );
-  
+
   dmd.selectFont(System5x7);
   if (players[0].score > players[1].score) {
     dmd.drawString(11, 1, "P1", 2, GRAPHICS_NORMAL );
@@ -228,7 +230,7 @@ int game_over() {
     dmd.drawString(11, 1, "P2", 2, GRAPHICS_NORMAL );
   }
   dmd.drawString(5, 9, "WINS", 4, GRAPHICS_NORMAL );
-  
+
   Serial.println("GAME OVER");
   players[0].score = 0;
   players[1].score = 0;
@@ -250,5 +252,5 @@ void loop() {
     case GAME_OVER :
       game_state = game_over();
       break;
-  }  
+  }
 }
